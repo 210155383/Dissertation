@@ -1,0 +1,547 @@
+---
+title: "Dissertation Code"
+author: "210155383"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r packages}
+
+
+library(tidyverse)
+library(ggplot2)
+library(magrittr)
+library(car)
+library(readxl)
+library(rstatix)
+
+
+
+```
+
+
+IMPORT DF
+
+
+```{r}
+
+
+BetaDF <- read_excel("Both_Betas_WI.xlsx")
+
+BetaDF %>% group_by(ROI, Hemisphere, Condition, Position) %>%
+           subset(Hemisphere %in% c('Left', 'Right'))
+           
+
+BetaDF$Hemisphere <- factor(BetaDF$Hemisphere, levels = c("Combined", "Left", "Right"))
+BetaDF$Position <- factor(BetaDF$Position, levels = c("1", "2", "3"))
+BetaDF$Condition <- factor(BetaDF$Condition, levels = c("Same", "Diff", "Half"))
+BetaDF$ROI <- factor(BetaDF$ROI, levels = c("OFA", "FFA"))
+
+```
+
+
+SUMMARY DATAFRAME
+
+
+``` {r}
+
+SummaryDF <- BetaDF %>%
+  group_by(ROI, Hemisphere, Condition, Position) %>%
+  summarise( 
+    n=n(),
+    mean=mean(Beta),
+    sd=sd(Beta)
+  ) %>%
+  mutate( se=sd/sqrt(n))  %>%
+  mutate( ic=se * qt((1-0.05)/2 + .5, n-1))
+
+
+
+
+```
+
+
+FOUR WAY ANOVA
+
+
+```{r}
+
+
+ANOVAdf <- subset(BetaDF, Hemisphere %in% c('Left', 'Right'))
+
+get_anova_table(anova_test(data = ANOVAdf, dv = Beta, wid = Sample, within = c(Hemisphere, ROI, Condition, Position), effect.size = "pes"))
+
+
+```
+
+
+OFA BETA PLOT
+
+
+```{r}
+
+
+OFABetaSum <- SummaryDF %>%
+              subset(ROI == "OFA") %>%
+              subset(Hemisphere %in% c('Left', 'Right'))
+
+
+ggplot(OFABetaSum, aes(x=Position, y=mean, fill = Condition)) +
+      geom_bar(fun = "mean", stat = "summary") +
+      geom_errorbar(aes(ymin=mean-se, ymax=mean+se, width = .1)) +
+      scale_fill_manual("Condition", values = c("Same" = "steelblue4", "Diff" = "hotpink3", "Half" = "cyan4")) +
+      facet_grid(Condition ~ Hemisphere, scales="free", space="free_x") +
+  
+  scale_y_continuous(expand = c(0,0), limits = c(0,9), breaks = seq(2, 8, 2)) +
+  ggtitle("OFA") +
+  ylab("Beta Value") +
+  theme(
+    legend.position = "none",
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    panel.background = element_rect(fill = "white"),
+    panel.grid.major = element_line(color="grey95"),
+    panel.grid.minor = element_line(color="grey95"),
+    strip.background=element_blank(),
+    strip.text.x=element_text(size = 16, color = "black", margin = margin(0, 0, 8, 0)),
+    strip.text.y=element_text(size = 14, color = "black", margin = margin(0, 0, 0, 8)),
+    panel.border = element_rect(size= .75,fill = NA,color = "black"))
+
+
+# ggsave("OFA Plot", width = 7, height = 5.5)
+
+
+```
+
+
+FFA BETA PLOT
+
+
+```{r}
+
+
+FFABetaSum <- SummaryDF %>%
+              subset(ROI == "FFA") %>%
+              subset(Hemisphere %in% c('Left', 'Right'))
+
+
+ggplot(FFABetaSum, aes(x=Position, y=mean, fill = Condition)) +
+      geom_bar(fun = "mean", stat = "summary") +
+      geom_errorbar(aes(ymin=mean-se, ymax=mean+se, width = .1)) +
+            scale_fill_manual("Condition", values = c("Same" = "steelblue4", "Diff" = "hotpink3", "Half" = "cyan4")) +
+      facet_grid(Condition ~ Hemisphere, scales="free", space="free_x") +
+  
+  scale_y_continuous(expand = c(0,0), limits = c(0,9), breaks = seq(2, 8, 2)) +
+  ggtitle("FFA") +
+  ylab("Beta Value") +
+  theme(
+    legend.position = "none",
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    panel.background = element_rect(fill = "white"),
+    panel.grid.major = element_line(color="grey95"),
+    panel.grid.minor = element_line(color="grey95"),
+    strip.background=element_blank(),
+    strip.text.x=element_text(size = 16, color = "black", margin = margin(0, 0, 8, 0)),
+    strip.text.y=element_text(size = 14, color = "black", margin = margin(0, 0, 0, 8)),
+    panel.border = element_rect(size= .75,fill = NA,color = "black"))
+
+
+# ggsave("FFA Plot.jpeg", width = 7, height = 5.5)
+
+
+```
+
+LEFT FFA BETAS BY CONDITION
+
+
+```{r}
+
+lFFABetaSum <- FFABetaSum %>%
+               subset(Hemisphere == "Left")
+
+
+
+ggplot(lFFABetaSum, aes(x=Position, y=mean, fill = Condition)) +
+      geom_bar(fun = "mean", stat = "summary") +
+      geom_errorbar(aes(ymin=mean-se, ymax=mean+se, width = .1)) +
+            scale_fill_manual("Condition", values = c("Same" = "steelblue4", "Diff" = "hotpink3", "Half" = "cyan4")) +
+      facet_grid( . ~ Condition, scales="free", space="free_x") +
+  
+  scale_y_continuous(expand = c(0,0), limits = c(0,9), breaks = seq(2, 8, 2)) +
+  ggtitle("Left FFA") +
+  ylab("Beta Value") +
+  theme(#legend.position=c(.60,.85),
+    legend.position = "none",
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    panel.background = element_rect(fill = "white"),
+    panel.grid.major = element_line(color="grey95"),
+    panel.grid.minor = element_line(color="grey95"),
+    strip.background=element_blank(),
+    strip.text.x=element_text(size = 16, color = "black", margin = margin(0, 0, 8, 0)),
+    strip.text.y=element_text(size = 14, color = "black", margin = margin(0, 0, 0, 8)),
+    panel.border = element_rect(size= .75,fill = NA,color = "black"))
+
+
+# ggsave("Figures/lFFA Plot.jpeg", width = 7, height = 3)
+
+
+
+```
+
+
+RIGHT FFA BETAS BY CONDITION
+
+
+```{r}
+
+rFFABetaSum <- FFABetaSum %>%
+               subset(Hemisphere == "Right")
+
+
+ggplot(rFFABetaSum, aes(x=Position, y=mean, fill = Condition)) +
+      geom_bar(fun = "mean", stat = "summary") +
+      geom_errorbar(aes(ymin=mean-se, ymax=mean+se, width = .1)) +
+            scale_fill_manual("Condition", values = c("Same" = "steelblue4", "Diff" = "hotpink3", "Half" = "cyan4")) +
+      facet_grid( . ~ Condition, scales="free", space="free_x") +
+  
+  scale_y_continuous(expand = c(0,0), limits = c(0,9), breaks = seq(2, 8, 2)) +
+  ggtitle("Right FFA") +
+  ylab("Beta Value") +
+  theme(
+    legend.position = "none",
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    panel.background = element_rect(fill = "white"),
+    panel.grid.major = element_line(color="grey95"),
+    panel.grid.minor = element_line(color="grey95"),
+    strip.background=element_blank(),
+    strip.text.x=element_text(size = 16, color = "black", margin = margin(0, 0, 8, 0)),
+    strip.text.y=element_text(size = 14, color = "black", margin = margin(0, 0, 0, 8)),
+    panel.border = element_rect(size= .75,fill = NA,color = "black"))
+
+
+# ggsave("rFFA Plot.jpeg", width = 7, height = 3)
+
+```
+
+
+LEFT OFA BETAS BY CONDITION
+
+
+```{r}
+
+lOFABetaSum <- OFABetaSum %>%
+               subset(Hemisphere == "Left")
+
+
+ggplot(lOFABetaSum, aes(x=Position, y=mean, fill = Condition)) +
+      geom_bar(fun = "mean", stat = "summary") +
+      geom_errorbar(aes(ymin=mean-se, ymax=mean+se, width = .1)) +
+            scale_fill_manual("Condition", values = c("Same" = "steelblue4", "Diff" = "hotpink3", "Half" = "cyan4")) +
+      facet_grid( . ~ Condition, scales="free", space="free_x") +
+  
+  scale_y_continuous(expand = c(0,0), limits = c(0,9), breaks = seq(2, 8, 2)) +
+  ggtitle("Left OFA") +
+  ylab("Beta Value") +
+  theme(
+    legend.position = "none",
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    panel.background = element_rect(fill = "white"),
+    panel.grid.major = element_line(color="grey95"),
+    panel.grid.minor = element_line(color="grey95"),
+    strip.background=element_blank(),
+    strip.text.x=element_text(size = 16, color = "black", margin = margin(0, 0, 8, 0)),
+    strip.text.y=element_text(size = 14, color = "black", margin = margin(0, 0, 0, 8)),
+    panel.border = element_rect(size= .75,fill = NA,color = "black"))
+
+
+# ggsave("lOFA Plot.jpeg", width = 7, height = 3)
+
+```
+
+ 
+RIGHT OFA BETAS BY CONDITION
+
+
+```{r}
+
+rOFABetaSum <- OFABetaSum %>%
+               subset(Hemisphere == "Right")
+
+
+ggplot(rOFABetaSum, aes(x=Position, y=mean, fill = Condition)) +
+      geom_bar(fun = "mean", stat = "summary") +
+      geom_errorbar(aes(ymin=mean-se, ymax=mean+se, width = .1)) +
+            scale_fill_manual("Condition", values = c("Same" = "steelblue4", "Diff" = "hotpink3", "Half" = "cyan4")) +
+      facet_grid( . ~ Condition, scales="free", space="free_x") +
+  
+  scale_y_continuous(expand = c(0,0), limits = c(0,9), breaks = seq(2, 8, 2)) +
+  ggtitle("Right OFA") +
+  ylab("Beta Value") +
+  theme(legend.position = "none",
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    panel.background = element_rect(fill = "white"),
+    panel.grid.major = element_line(color="grey95"),
+    panel.grid.minor = element_line(color="grey95"),
+    strip.background=element_blank(),
+    strip.text.x=element_text(size = 16, color = "black", margin = margin(0, 0, 8, 0)),
+    strip.text.y=element_text(size = 14, color = "black", margin = margin(0, 0, 0, 8)),
+    panel.border = element_rect(size= .75,fill = NA,color = "black"))
+
+
+# ggsave("rOFA Plot.jpeg", width = 7, height = 3)
+
+
+```
+
+
+STATISTICS REPLICATION (HEMISPHERE == "Combined")
+
+
+``` {r}
+
+## COMBINED FFA SAME
+
+cFFA_same <- BetaDF %>%
+             subset(ROI == "FFA") %>%
+             subset(Hemisphere == "Combined") %>%
+             subset(Condition == "Same") 
+
+get_anova_table(anova_test(data = cFFA_same, dv = Beta, wid = Sample, within = Position)) # SUCCESS!!
+pwc_cFFAs <- cFFA_same %>% pairwise_t_test(Beta ~ Position, paired = TRUE,p.adjust.method = "bonferroni")
+
+
+## FFA DIFF
+
+cFFA_diff <- BetaDF %>%
+             subset(ROI == "FFA") %>%
+             subset(Hemisphere == "Combined") %>%
+             subset(Condition == "Diff") 
+
+get_anova_table(anova_test(data = cFFA_diff, dv = Beta, wid = Sample, within = Position))
+pwc_cFFAd <- cFFA_diff %>% pairwise_t_test(Beta ~ Position, paired = TRUE,p.adjust.method = "bonferroni")
+
+
+## COMBINED FFA HALF
+
+cFFA_half <- BetaDF %>%
+             subset(ROI == "FFA") %>%
+             subset(Hemisphere == "Combined") %>%
+             subset(Condition == "Half") 
+
+get_anova_table(anova_test(data = cFFA_half, dv = Beta, wid = Sample, within = Position))
+pwc_cFFAh <- cFFA_half %>% pairwise_t_test(Beta ~ Position, paired = TRUE,p.adjust.method = "bonferroni")
+
+## COMBINED OFA SAME
+
+cOFA_same <- BetaDF %>%
+             subset(ROI == "OFA") %>%
+             subset(Hemisphere == "Combined") %>%
+             subset(Condition == "Same") 
+
+get_anova_table(anova_test(data = cOFA_same, dv = Beta, wid = Sample, within = Position))
+pwc_cOFAs <- cOFA_same %>% pairwise_t_test(Beta ~ Position, paired = TRUE,p.adjust.method = "bonferroni")
+
+## COMBINED OFA DIFFERENT
+
+cOFA_diff <- BetaDF %>%
+             subset(ROI == "OFA") %>%
+             subset(Hemisphere == "Combined") %>%
+             subset(Condition == "Diff") 
+
+get_anova_table(anova_test(data = cOFA_diff, dv = Beta, wid = Sample, within = Position))
+pwc_cOFAd <- cOFA_diff %>% pairwise_t_test(Beta ~ Position, paired = TRUE,p.adjust.method = "bonferroni")
+
+
+## COMBINED OFA HALF
+
+cOFA_half <- BetaDF %>%
+             subset(ROI == "OFA") %>%
+             subset(Hemisphere == "Combined") %>%
+             subset(Condition == "Half") 
+
+get_anova_table(anova_test(data = cOFA_half, dv = Beta, wid = Sample, within = Position))
+pwc_cOFAh <- cOFA_half %>% pairwise_t_test(Beta ~ Position, paired = TRUE,p.adjust.method = "bonferroni")
+
+
+```
+
+
+STATISTICS LEFT HEMISPHERE (HEMISPHERE == "Left")
+
+
+```{r}
+
+## LEFT FFA SAME
+
+lFFA_same <- BetaDF %>%
+             subset(ROI == "FFA") %>%
+             subset(Hemisphere == "Left") %>%
+             subset(Condition == "Same") 
+
+get_anova_table(anova_test(data = lFFA_same, dv = Beta, wid = Sample, within = Position))
+pwc_lFFAs <- lFFA_same %>% pairwise_t_test(Beta ~ Position, paired = TRUE,p.adjust.method = "bonferroni")
+
+
+
+## LEFT FFA DIFF
+
+lFFA_diff <- BetaDF %>%
+             subset(ROI == "FFA") %>%
+             subset(Hemisphere == "Left") %>%
+             subset(Condition == "Diff") 
+
+get_anova_table(anova_test(data = lFFA_diff, dv = Beta, wid = Sample, within = Position))
+pwc_lFFAd <- lFFA_diff %>% pairwise_t_test(Beta ~ Position, paired = TRUE,p.adjust.method = "bonferroni")
+
+
+## LEFT FFA HALF
+
+lFFA_half <- BetaDF %>%
+             subset(ROI == "FFA") %>%
+             subset(Hemisphere == "Left") %>%
+             subset(Condition == "Half") 
+
+get_anova_table(anova_test(data = lFFA_half, dv = Beta, wid = Sample, within = Position))
+pwc_lFFAh <- lFFA_half %>% pairwise_t_test(Beta ~ Position, paired = TRUE,p.adjust.method = "bonferroni")
+
+pwc_lFFAh
+
+
+## LEFT OFA SAME
+
+lOFA_same <- BetaDF %>%
+             subset(ROI == "OFA") %>%
+             subset(Hemisphere == "Left") %>%
+             subset(Condition == "Same") 
+
+get_anova_table(anova_test(data = lOFA_same, dv = Beta, wid = Sample, within = Position))
+pwc_lOFAs <- lOFA_same %>% pairwise_t_test(Beta ~ Position, paired = TRUE,p.adjust.method = "bonferroni")
+
+
+## LEFT OFA DIFFERENT
+
+lOFA_diff <- BetaDF %>%
+             subset(ROI == "OFA") %>%
+             subset(Hemisphere == "Left") %>%
+             subset(Condition == "Diff") 
+
+get_anova_table(anova_test(data = lOFA_diff, dv = Beta, wid = Sample, within = Position))
+pwc_lOFAd <- lOFA_diff %>% pairwise_t_test(Beta ~ Position, paired = TRUE,p.adjust.method = "bonferroni")
+
+
+## LEFT OFA HALF
+
+lOFA_half <- BetaDF %>%
+             subset(ROI == "OFA") %>%
+             subset(Hemisphere == "Left") %>%
+             subset(Condition == "Half") 
+
+get_anova_table(anova_test(data = lOFA_half, dv = Beta, wid = Sample, within = Position))
+pwc_lOFAh <- lOFA_half %>% pairwise_t_test(Beta ~ Position, paired = TRUE,p.adjust.method = "bonferroni")
+
+
+```
+
+
+STATISTICS RIGHT HEMISPHERE (HEMISPHERE == "Right")
+
+
+```{r}
+
+## RIGHT FFA SAME
+
+rFFA_same <- BetaDF %>%
+             subset(ROI == "FFA") %>%
+             subset(Hemisphere == "Right") %>%
+             subset(Condition == "Same") 
+
+get_anova_table(anova_test(data = rFFA_same, dv = Beta, wid = Sample, within = Position))
+pwc_rFFAs <- rFFA_same %>% pairwise_t_test(Beta ~ Position, paired = TRUE,p.adjust.method = "bonferroni")
+
+
+## RIGHT FFA DIFF
+
+rFFA_diff <- BetaDF %>%
+             subset(ROI == "FFA") %>%
+             subset(Hemisphere == "Right") %>%
+             subset(Condition == "Diff") 
+
+get_anova_table(anova_test(data = rFFA_diff, dv = Beta, wid = Sample, within = Position))
+pwc_rFFAd <- rFFA_diff %>% pairwise_t_test(Beta ~ Position, paired = TRUE,p.adjust.method = "bonferroni")
+
+
+## RIGHT FFA HALF
+
+rFFA_half <- BetaDF %>%
+             subset(ROI == "FFA") %>%
+             subset(Hemisphere == "Right") %>%
+             subset(Condition == "Half") 
+
+get_anova_table(anova_test(data = rFFA_half, dv = Beta, wid = Sample, within = Position))
+pwc_rFFAh <- rFFA_half %>% pairwise_t_test(Beta ~ Position, paired = TRUE,p.adjust.method = "bonferroni")
+
+
+## RIGHT OFA SAME
+
+rOFA_same <- BetaDF %>%
+             subset(ROI == "OFA") %>%
+             subset(Hemisphere == "Right") %>%
+             subset(Condition == "Same") 
+
+get_anova_table(anova_test(data = rOFA_same, dv = Beta, wid = Sample, within = Position))
+pwc_rOFAs <- rOFA_same %>% pairwise_t_test(Beta ~ Position, paired = TRUE,p.adjust.method = "bonferroni")
+
+## RIGHT OFA DIFFERENT
+
+rOFA_diff <- BetaDF %>%
+             subset(ROI == "OFA") %>%
+             subset(Hemisphere == "Right") %>%
+             subset(Condition == "Diff") 
+
+get_anova_table(anova_test(data = rOFA_diff, dv = Beta, wid = Sample, within = Position))
+pwc_rOFAd <- rOFA_diff %>% pairwise_t_test(Beta ~ Position, paired = TRUE,p.adjust.method = "bonferroni")
+
+
+## RIGHT OFA HALF
+
+rOFA_half <- BetaDF %>%
+             subset(ROI == "OFA") %>%
+             subset(Hemisphere == "Right") %>%
+             subset(Condition == "Half") 
+
+get_anova_table(anova_test(data = rOFA_half, dv = Beta, wid = Sample, within = Position))
+pwc_rOFAh <- rOFA_half %>% pairwise_t_test(Beta ~ Position, paired = TRUE,p.adjust.method = "bonferroni")
+
+
+
+```
+
+
+LATERALISATION BY REGION HEMISPHERE COMPARISONS
+
+
+``` {r}
+
+# FFA LATERALISATION
+
+FFA_df <- BetaDF %>%
+          subset(ROI == "FFA") %>%
+          subset(Hemisphere %in% c('Left', 'Right'))
+
+get_anova_table(anova_test(data = FFA_df, dv = Beta, wid = Sample, within = c(Hemisphere, Condition, Position)))
+
+
+# OFA LATERALISATION
+
+
+OFA_df <- BetaDF %>%
+          subset(ROI == "OFA") %>%
+          subset(Hemisphere %in% c('Left', 'Right'))
+
+get_anova_table(anova_test(data = OFA_df, dv = Beta, wid = Sample, within = c(Hemisphere, Condition, Position), effect.size = "pes"))
+
